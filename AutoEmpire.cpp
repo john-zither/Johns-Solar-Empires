@@ -268,6 +268,11 @@ void AutoEmpire::TickColonize(int deltaTime)
 }
 
 // ── Colony development ────────────────────────────────────────────────────────
+//
+// If a colony has no city data yet (edge case), initialize it once.
+// Otherwise, grow each city one size step toward its maximum. This avoids
+// calling FillPlanetDataForTechLevel on existing colonies, which would
+// regenerate all city data from scratch and wipe existing buildings.
 
 void AutoEmpire::TickDevelop(int deltaTime)
 {
@@ -286,15 +291,34 @@ void AutoEmpire::TickDevelop(int deltaTime)
         for (auto& planetPtr : starPtr->GetPlanetRecords())
         {
             cPlanetRecord* planet = planetPtr.get();
-            if (planet == homeWorld)                      continue;
-            if (planet->mTechLevel != TechLevel::Empire)  continue;
-            if ((int)planet->mCivData.size() >= 3)        continue;
+            if (planet == homeWorld)                     continue;
+            if (planet->mTechLevel != TechLevel::Empire) continue;
 
-            cPlanetRecord::FillPlanetDataForTechLevel(planet, TechLevel::Empire);
-            ++developed;
+            if (planet->mCivData.empty())
+            {
+                // Colony has no city data yet; initialize it once.
+                cPlanetRecord::FillPlanetDataForTechLevel(planet, TechLevel::Empire);
+                ++developed;
+                continue;
+            }
+
+            // Grow existing cities one size step toward their maximum.
+            for (cCivData* civ : planet->mCivData)
+            {
+                if (!civ) continue;
+                for (cCityData* city : civ->mCities)
+                {
+                    if (!city) continue;
+                    if (city->mSize < city->mMaxSize)
+                    {
+                        city->mSize++;
+                        ++developed;
+                    }
+                }
+            }
         }
     }
 
     if (developed > 0)
-        App::ConsolePrintF("AutoEmpire: Developed %d colonies", developed);
+        App::ConsolePrintF("AutoEmpire: Grew %d city slots", developed);
 }
