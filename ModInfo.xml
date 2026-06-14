@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mod>
+    <identity>
+        <name>Johns Solar Empires</name>
+        <uniqueName>JohnsSolarEmpires</uniqueName>
+        <description>
+            Gives the player's empire autonomous behaviour while you explore the galaxy.
+            Colonies generate passive income every 60 seconds.
+            Uninhabited player-owned planets are slowly terraformed toward T3 every 2 minutes.
+            The empire automatically colonizes nearby unclaimed T3 worlds every 5 minutes (costs 10,000 Sporebucks).
+            Underdeveloped colonies grow additional cities every 3 minutes.
+            All activity is logged to the in-game console.
+        </description>
+        <author>Johns Solar Empires</author>
+        <version>0.1.0</version>
+    </identity>
+    <prerequisites>
+        <sporeModAPI minimumVersion="2.5.24" />
+    </prerequisites>
+    <installation>
+        <install src="JohnsSolarEmpires.dll" dest="ModLibs" />
+    </installation>
+</mod>

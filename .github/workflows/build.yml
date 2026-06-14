@@ -1,0 +1,70 @@
+name: Build JohnsSolarEmpires
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout mod source
+        uses: actions/checkout@v4
+
+      - name: Checkout Spore ModAPI SDK
+        uses: actions/checkout@v4
+        with:
+          repository: emd4600/Spore-ModAPI
+          path: Spore-ModAPI
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup MSVC x86 environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      # Build the SDK's static lib config → produces SporeModAPIBase.lib
+      - name: Build SporeModAPI static lib
+        run: |
+          msbuild "Spore-ModAPI\Spore ModAPI\Spore ModAPI.vcxproj" `
+            /p:Configuration=Release /p:Platform=Win32 `
+            /p:WindowsTargetPlatformVersion=10.0 `
+            /clp:Summary /v:m
+        shell: pwsh
+
+      # Download SporeModAPI.lib (import lib for the DLL) from the SDK's latest release
+      - name: Download SporeModAPI.lib
+        run: |
+          $url = "https://github.com/emd4600/Spore-ModAPI/releases/latest/download/SporeModAPIdlls.zip"
+          Invoke-WebRequest -Uri $url -OutFile SporeModAPIdlls.zip
+          Expand-Archive -Path SporeModAPIdlls.zip -DestinationPath SporeModAPIdlls -Force
+          New-Item -ItemType Directory -Force -Path coreLibs | Out-Null
+          Copy-Item SporeModAPIdlls\SporeModAPI.lib coreLibs\SporeModAPI.lib
+        shell: pwsh
+
+      # Build the mod.
+      # SporeSdkPath     -> SDK root (lib\Release\SporeModAPIBase.lib, Detours\lib.X86\detours.lib)
+      # SporeLauncherPath -> workspace root (coreLibs\SporeModAPI.lib; DLL lands in mLibs\)
+      - name: Build JohnsSolarEmpires.dll
+        run: |
+          $sdk  = "${{ github.workspace }}\Spore-ModAPI\"
+          $game = "${{ github.workspace }}\"
+          msbuild "JohnsSolarEmpires.vcxproj" `
+            /p:Configuration=Release /p:Platform=Win32 `
+            /p:SporeSdkPath="$sdk" `
+            /p:SporeLauncherPath="$game" `
+            /p:WindowsTargetPlatformVersion=10.0 `
+            /clp:Summary /v:m
+        shell: pwsh
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: JohnsSolarEmpires
+          path: mLibs\JohnsSolarEmpires.dll
+          if-no-files-found: error
